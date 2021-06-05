@@ -1,16 +1,16 @@
 import sys
 import argparse
 from datetime import datetime
-
+from urllib.parse import urlparse
 
 def parse_args(args):
     """Argument parsing for run_covidnet_ct.py"""
     parser = argparse.ArgumentParser(description='COVIDNet-CT Train/Test/Infer Script')
-    parser.add_argument('-md', '--model_dir', type=str, default='models/COVIDNet-CT-A', help='Model directory')
+    parser.add_argument('-md', '--model_dir', type=str, default='D:/Java_develop/COVIDNet-CT/models/COVIDNet-CT-A', help='Model directory')
     parser.add_argument('-mn', '--meta_name', type=str, default='model.meta', help='Model meta name')
     parser.add_argument('-ck', '--ckpt_name', type=str, default='model', help='Model checkpoint name')
-    parser.add_argument('-ih', '--input_height', type=int, default=512, help='Input image height')
-    parser.add_argument('-iw', '--input_width', type=int, default=512, help='Input image width')
+    parser.add_argument('-ih', '--input_height', type=int, default=256, help='Input image height')
+    parser.add_argument('-iw', '--input_width', type=int, default=256, help='Input image width')
     if args[0] == 'train':
         # General training parameters
         parser.add_argument('-os', '--output_suffix', type=str, default=datetime.now().strftime('_%Y-%m-%d_%H.%M.%S'),
@@ -43,10 +43,10 @@ def parse_args(args):
         parser.add_argument('-dd', '--data_dir', type=str, default='data/COVIDx-CT', help='Data directory')
         parser.add_argument('-bs', '--batch_size', type=int, default=8, help='Batch size')
         parser.add_argument('-tf', '--test_split_file', type=str,
-                            default='test_COVIDx-CT.txt', help='Test split file')
+                            default='ycy.txt', help='Test split file')
         parser.add_argument('-pc', '--plot_confusion', action='store_true', help='Flag to plot confusion matrix')
     elif args[0] == 'infer':
-        parser.add_argument('-im', '--image_file', type=str, default='assets/ex-covid-ct.png', help='Image file')
+        parser.add_argument('-im', '--image_file', type=str, default='D:/Java_develop/COVIDNet-CT/data/COVIDx-CT/CP_2_3503_0006.png', help='Image file')
         parser.add_argument('-ac', '--auto_crop', action='store_true',
                             help='Flag to attempt automatic cropping of the image')
     elif args[0] in ('-h', '--help'):
@@ -54,10 +54,15 @@ def parse_args(args):
               'to see help message for each run option')
         sys.exit(0)
     else:
-        raise ValueError('Mode must be one of {train, test, infer} or {-h, --help}')
+        parsed = urlparse(args[0])
+        parser.add_argument('-im', '--image_file', type=str, default='D:/Java_develop/COVIDNet-CT/data/COVIDx-CT/CP_2_3503_0006.png', help='Image file')
+        args[0]=parsed.path.replace("/image","C:/Users/78669/data/image")
+        parser.image_file=args[0]
+        args[0]='infer'
+        parser.add_argument('-ac', '--auto_crop', action='store_true',
+                                help='Flag to attempt automatic cropping of the image')
 
     parsed_args = parser.parse_args(args[1:])
-    if args[0] == 'infer':
+    if args[0] != 'train' and args[0] !='test':
         parsed_args.data_dir = None
-
     return args[0], parsed_args

@@ -4,7 +4,9 @@
 __pycache__/
 .idea/
 data/
+*.hdfs
 explain/
-models/
+models/COVIDNet-CT-A
+models/COVIDNet-CT-B
 output/
 gensynth/

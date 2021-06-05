@@ -1,9 +1,10 @@
 import os
 import numpy as np
 import tensorflow as tf
-
+from tqdm import tqdm
 import augmentations
-
+import h5py
+from math import ceil
 
 class COVIDxCTDataset:
     """COVIDx-CT dataset class, which handles construction of train/validation datasets"""
@@ -34,7 +35,6 @@ class COVIDxCTDataset:
         """Creates COVIDX-CT dataset for train or val split"""
         files, classes, bboxes = self._get_files(split_file)
         count = len(files)
-
         # Create balanced dataset if required
         if is_training and balanced:
             files = np.asarray(files)
@@ -56,15 +56,33 @@ class COVIDxCTDataset:
         if is_training:
             dataset = dataset.shuffle(buffer_size=self.shuffle_buffer)
             dataset = dataset.repeat()
-
+        dataset = dataset.apply(tf.contrib.data.map_and_batch(
+            preprocess_fn, batch_size,
+            num_parallel_batches=4,  # cpu cores
+            drop_remainder=True if is_training else False))
         # Create and apply map function
         load_and_process = self._get_load_and_process_fn(is_training)
+
         dataset = dataset.map(load_and_process)
-
-        # Batch data
         dataset = dataset.batch(batch_size)
-
-        return dataset, count, batch_size
+        num_iters = ceil(count / batch_size)
+        with tf.Session() as sess:
+            next=dataset.make_one_shot_iterator().get_next()
+            for i in range(num_iters):
+                data=sess.run(next)
+                x=data['image']
+                y=tf.keras.utils.to_categorical(data['label'],3)
+                # yield(x,y)
+                ## for colab
+                print('Creating file', (i+1))
+                if is_training:
+                    dest_file_path =  "output/train_"+str(i + 1) + ".h5"
+                else:
+                    dest_file_path =  "output/val_"+str(i + 1) + ".h5"
+                with h5py.File(dest_file_path, 'w') as f:
+                    f.create_dataset("input_data", data=x)
+                    f.create_dataset("input_labels", data=y)
+                    
 
     def _get_load_and_process_fn(self, is_training):
         """Creates map function for TF dataset"""
@@ -84,7 +102,6 @@ class COVIDxCTDataset:
             image = image / 255.0
             image = tf.image.resize(image, [self.image_height, self.image_width])
             label = tf.cast(label, dtype=tf.int32)
-
             return {'image': image, 'label': label}
 
         return load_and_process
